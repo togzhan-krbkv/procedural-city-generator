@@ -125,3 +125,29 @@ massing in `geometry.py` ends up wanting it.
 Determinism again comes from a single seeded `random.Random`, threaded
 through both the per-building height draw and that building's floor
 plan subdivision, in parcel order.
+
+## Geometry export: extrusion and the JSON scene
+
+`citygen.geometry` turns one footprint and a height into a closed
+triangle mesh: a flat roofed box, 8 vertices and 12 triangular faces,
+2 for the roof, 2 for the floor, 2 per side wall. Winding order is
+kept consistently outward facing (counterclockwise as seen from
+outside each face) because the viewer built in a later milestone needs
+correct face normals to light the buildings properly, not just a
+watertight shape.
+
+Outward winding is checked directly in the tests rather than assumed:
+for a closed, consistently oriented triangle mesh, the divergence
+theorem gives a signed volume, `sum(dot(v0, cross(v1, v2))) / 6` over
+every face, that equals the enclosed volume regardless of where the
+coordinate origin sits. Computing that sum and comparing it against
+`footprint.area * height` catches three failure modes in one
+assertion: a gap in the mesh, a triangle wound the wrong way, and
+wrong dimensions.
+
+`citygen.export` turns a list of Buildings into the JSON scene the
+viewer will load: one entry per building with its extruded mesh,
+height, footprint, and room count. Buildings are kept as separate
+entries with their own small vertex and face lists rather than merged
+into one global buffer, since the viewer places and manages one object
+per building.
