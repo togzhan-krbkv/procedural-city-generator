@@ -94,3 +94,34 @@ A single seeded `random.Random` is created once per call to
 and every block's parcel subdivision in a fixed order, so a given
 seed, district, and rule set always retrace the same sequence of
 decisions and produce the same network.
+
+## Block composition: placing buildings on parcels
+
+`citygen.block` takes the parcels from a StreetNetwork and gives each
+one a building: a footprint, a floor plan, and a height.
+
+The footprint is the parcel scaled toward its own center by a single
+`density` value in (0, 1], the same on both axes. This is a linear
+ratio rather than an area ratio: a density of 0.8 keeps 80% of each
+side, which works out to 64% of the parcel's area, not 80% of it.
+A linear ratio was chosen over an area ratio because it reads directly
+as a setback, a density of 0.8 means roughly a 10% margin on every
+side, which is the quantity worth exposing as a parameter here rather
+than an area fraction that would need to be converted back to a
+setback anyway.
+
+Each footprint then gets its own floor plan by calling
+`shape_grammar.subdivide_rect` directly, the same primitive
+`street_network` calls for parcels, so a building's interior is
+generated with the exact same rule as a room subdivision, just with
+parameters supplied through `BlockRules.room_rules` instead of a
+standalone `SubdivisionRules` call.
+
+Height is drawn once per building from a uniform range and is not
+tied to floor count or room layout in this milestone. Connecting
+height to the floor plan is left for a later pass if the extruded
+massing in `geometry.py` ends up wanting it.
+
+Determinism again comes from a single seeded `random.Random`, threaded
+through both the per-building height draw and that building's floor
+plan subdivision, in parcel order.
