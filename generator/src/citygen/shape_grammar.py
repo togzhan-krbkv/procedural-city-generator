@@ -89,26 +89,71 @@ def subdivide_footprint(footprint: Rect, rules: SubdivisionRules, seed: int) -> 
         do not overlap each other.
     """
     rng = random.Random(seed)
-    rooms: list[Rect] = []
-    _subdivide(footprint, rules, rng, depth=0, rooms=rooms)
-    return rooms
+    return subdivide_rect(
+        footprint,
+        rules.min_room_width,
+        rules.min_room_height,
+        rules.max_depth,
+        rules.split_ratio_range,
+        rng,
+    )
+
+
+def subdivide_rect(
+    rect: Rect,
+    min_width: float,
+    min_height: float,
+    max_depth: int,
+    split_ratio_range: tuple[float, float],
+    rng: random.Random,
+) -> list[Rect]:
+    """Recursively splits a rectangle along its longer axis.
+
+    This is the primitive shared by room subdivision above and parcel
+    subdivision in citygen.street_network: split along the longer axis
+    at a ratio drawn from rng, stop when the maximum depth is reached
+    or a candidate split would leave a child smaller than the given
+    minimum size.
+
+    Args:
+        rect: The rectangle to subdivide.
+        min_width: Smallest allowed width for a resulting piece.
+        min_height: Smallest allowed height for a resulting piece.
+        max_depth: Maximum number of recursive splits along any branch.
+        split_ratio_range: Inclusive range the split position is drawn
+            from, as a fraction of the axis being split.
+        rng: Random source. Callers control determinism by seeding this
+            themselves, so a caller that needs several related but
+            distinct subdivisions from one seed can thread a single rng
+            through all of them.
+
+    Returns:
+        A list of rectangles whose union equals rect and which do not
+        overlap each other.
+    """
+    parts: list[Rect] = []
+    _subdivide(rect, min_width, min_height, max_depth, split_ratio_range, rng, depth=0, parts=parts)
+    return parts
 
 
 def _subdivide(
     rect: Rect,
-    rules: SubdivisionRules,
+    min_width: float,
+    min_height: float,
+    max_depth: int,
+    split_ratio_range: tuple[float, float],
     rng: random.Random,
     depth: int,
-    rooms: list[Rect],
+    parts: list[Rect],
 ) -> None:
-    if depth >= rules.max_depth:
-        rooms.append(rect)
+    if depth >= max_depth:
+        parts.append(rect)
         return
 
-    # Splitting along the longer axis keeps rooms closer to square instead
+    # Splitting along the longer axis keeps pieces closer to square instead
     # of drifting into long corridors as recursion deepens.
     split_along_x = rect.width >= rect.height
-    ratio = rng.uniform(*rules.split_ratio_range)
+    ratio = rng.uniform(*split_ratio_range)
 
     if split_along_x:
         first_width = rect.width * ratio
@@ -123,12 +168,9 @@ def _subdivide(
             Rect(rect.x, rect.y + first_height, rect.width, rect.height - first_height),
         ]
 
-    if any(
-        child.width < rules.min_room_width or child.height < rules.min_room_height
-        for child in children
-    ):
-        rooms.append(rect)
+    if any(child.width < min_width or child.height < min_height for child in children):
+        parts.append(rect)
         return
 
     for child in children:
-        _subdivide(child, rules, rng, depth + 1, rooms)
+        _subdivide(child, min_width, min_height, max_depth, split_ratio_range, rng, depth + 1, parts)
