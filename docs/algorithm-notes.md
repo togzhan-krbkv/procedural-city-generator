@@ -151,3 +151,15 @@ height, footprint, and room count. Buildings are kept as separate
 entries with their own small vertex and face lists rather than merged
 into one global buffer, since the viewer places and manages one object
 per building.
+
+## Viewer: coordinate convention
+
+The generator's coordinates use z as up, matching the 2D floor plan
+math throughout this document. Three.js follows the more common y up
+convention, so the viewer's scene loader remaps every vertex from
+(x, y, z) to (x, z, -y) when it builds each building's geometry. That
+mapping has determinant +1, a proper rotation rather than a
+reflection, which is what keeps the exported triangle winding pointing
+outward in the viewer without needing to reverse any face. Buildings
+are flat shaded rather than smooth shaded so the box edges read as
+sharp architectural corners instead of blending into a rounded shape.
