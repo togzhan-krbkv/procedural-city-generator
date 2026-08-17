@@ -35,7 +35,10 @@ ground.rotation.x = -Math.PI / 2;
 ground.position.y = -0.05;
 scene.add(ground);
 
-loadCityScene("/scenes/sample_scene.json")
+// import.meta.env.BASE_URL reflects the base path set in vite.config.ts,
+// so this resolves correctly both locally, where it is "/", and once
+// deployed under a GitHub Pages project subpath.
+loadCityScene(`${import.meta.env.BASE_URL}scenes/sample_scene.json`)
   .then((cityGroup) => {
     scene.add(cityGroup);
 
